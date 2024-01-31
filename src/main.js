@@ -10,5 +10,6 @@ const pinia = createPinia();
 app.use(router);
 app.use(pinia);
 app.use(store);
+app.use(createPinia());
 app.mount("#app");
 // console.log(pinia)
