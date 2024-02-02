@@ -1,10 +1,10 @@
-import Vuex from "vuex";
+import {  defineStore } from "pinia";
 
-export default new Vuex.Store({
-  state: {
+export const useCartStore = defineStore("cart", {
+  state: () => ({
     products: [],
     cartItems: [],
-  },
+  }),
   mutations: {
     setProducts(state, products) {
       state.products = products;
