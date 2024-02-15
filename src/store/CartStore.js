@@ -6,18 +6,20 @@ export const useCartStore = defineStore("cart", {
   }),
   actions: {
     addToCart(product) {
-      // 商品IDとサイズをキーとしてカートに追加
-      const key = `${product.product_id}-${product.size}`;
-      this.cartItems[key] = { ...product, saveKey: key, buyCount: 1};
+      const key = `${product.product_id}`;
+      if (this.cartItems[key]) {
+        this.cartItems[key].buyCount++;
+      } else {
+        this.cartItems[key] = { ...product, saveKey: key, buyCount: 1 };
+      }
     },
     removeFromCart(product) {
-      // 商品IDをサイズをキーとしてカートから削除
-      const key = `${product.product_id}-${product.size}`;
+      const key = `${product.product_id}`;
       delete this.cartItems[key];
       this.nowDeleteKey = key;
     },
     clearCart() {
-      this.cartItems = {}; // カート内のすべての商品をクリア
+      this.cartItems = {};
     },
   },
 });

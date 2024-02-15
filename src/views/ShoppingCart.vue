@@ -1,166 +1,180 @@
 <template>
   <div class="wrapper">
-    <div class="headding">ショッピングカート</div>
+    <h1 class="headding">ショッピングカート</h1>
     <div class="item-name">ご注文内容</div>
-    <!-- <p class="cart-no-stock" v-show="!cartItems.length">現在ショッピングカートに商品はありません。</p> -->
-    <div class="cart-products" v-for="product in cartItems" :key="product.id">
+    <p class="cart-no-stock" v-if="cartIsEmpty">現在ショッピングカートに商品はありません。</p>
+    <div class="cart-products" v-for="(cart, index) in products" :key="cart.saveKey">
       <div class="product-image">
-        <img src="" alt="商品画像">
+        <img :src="cart.image" alt="商品画像" class="image-item">
       </div>
       <div class="product-details">
-        <p class="product-name">{{ product.product_name }}</p>
-        <p class="product-price">価格：￥{{ product.price }}(税込)</p>
-      </div>
-      <div class="edit-button">
-        <div class="edit-quantity">
-          <button class="quantity-button" @click="incrementQuantity(product.id)" :disabled="product.quantity >= product.stock">+</button>
-          <p class="quantity">{{ product.quantity }}</p>
-          <button class="quantity-button" @click="decrementQuantity(product.id)">-</button>
+        <div class="product-info">
+          <p class="product-name">{{ cart.product_name }}</p>
+          <p class="product-price">価格：￥{{ cart.price.toLocaleString() }}(税込)</p>
         </div>
-        <button class="remove-button" @click="removeFromCart(product.id)"><span class="remove-icon">✕</span>カートから削除する</button>
-        <p class="quantity-error" v-if="product.quantity >= product.stock">在庫数が上限のため追加することが出来ません</p>
+      </div>
+      <div class="list-right">
+        <div class="edit-number">
+          <select name="number-dropdown" v-model="selectedNumbers[index]" @change="setBuyCount(cart, selectedNumbers[index])">
+            <option v-for="stockOption in getStockOptions(cart)" :key="stockOption" :value="stockOption" :selected="stockOption === selectedNumbers[index]">
+              {{ stockOption }}
+            </option>
+          </select>
+        </div>
+        <div class="delete-button-box">
+          <button class="delete-button-label" type="button" @click="DeleteItem(cart)">カートから削除する</button>
+        </div>
+        <!-- <p class="max-stock-text" v-show="cart.product.stock === 0">在庫数が上限のため追加することが出来ません</p> -->
       </div>
     </div>
-    <!-- <div class="cart-total">
-      <p class="total-details">商品合計数量：{{ calculateTotalQuantity() }}点</p>
-      <p class="total-details">商品合計金額：￥{{ calculateTotalPrice() }}(税込)</p>
-    </div> -->
-    <div class="cart-button">
-      <button class="shopping-button">ショッピングを続ける</button>
-      <button class="buy-button">購入手続きに進む</button>
+    <div class="total-container">
+      <p class="total-items">商品合計数量：{{ calculateTotalQuantity() }}点</p>
+      <p class="total-price">商品合計金額：￥{{ calculateTotalPrice() }}（税込）</p>
     </div>
-    <div v-if="cartIsEmpty">
-      <button class="top-button">TOPページに戻る</button>
+    <div class="cart-button" v-if="!cartIsEmpty" style="text-align: center;">
+      <button class="cart-buttons">
+        <router-link class="cart-button-label" type="button" to="/homePage">ショッピングを続ける</router-link>
+      </button>
+      <button class="cart-buttons">
+        <router-link class="cart-button-label" type="button" to="/shoppingMethod">購入手続きに進む</router-link>
+      </button>
+    </div>
+    <div v-if="cartIsEmpty" style="text-align: center;">
+      <button class="page-buttons">
+        <router-link class="page-button-label" type="button" to="/homepage">TOPページに戻る</router-link>
+      </button>
     </div>
   </div>
 </template>
 
 <script>
-// import { ref, onMounted } from "vue";
-// import { useProductStore } from "../store/product.js";
-// import { useCartStore } from "../store/CartStore.js";
+import { ref, computed, onMounted, watch } from "vue";
+import { useProductStore } from "../store/ProductsStore.js";
+import { useCartStore } from "../store/CartStore.js";
 
 export default {
-//   setup() {
-//     const productsInCart = ref([]);
-//     const maxLengths = ref([]);
-//     const selectedNumbers = ref([]);
-//     const products = ref([]);
+  setup() {
+    const productStore = useProductStore();
+    const cartStore = useCartStore();
+    const cartItems = ref(cartStore.cartItems);
+    const products = computed(() => Object.values(cartItems.value));
+    const selectedNumbers = ref([]);
+    const cartIsEmpty = computed(() => products.value.length === 0);
+    const setBuyCount = (cart, count) => {
+      cartStore.setBuyCount(cart, count);
+    };
+    const DeleteItem = (product) => {
+      cartStore.removeFromCart(product);
+    };
+    const calculateTotalQuantity = () => {
+      return products.value.reduce((total, cart) => {
+        return total + cart.buyCount;
+      }, 0);
+    };
+    const calculateTotalPrice = () => {
+      return products.value.reduce((total, cart) => {
+        return total + cart.buyCount * cart.price;
+      }, 0).toLocaleString();
+    };
+    const getStockOptions = (cart) => {
+      const product = productStore.searchProduct(cart.product_id);
+      if (product && product.stock) {
+        const stockOptions = [];
+        for (let i = 1; i <= product.stock; i++) {
+          stockOptions.push(i);
+        }
+        return stockOptions;
+      }
+      return [];
+    };
 
-//     const productStore = useProductStore();
-//     const cartStore = useCartStore();
+    watch(cartStore, () => {
+      cartItems.value = cartStore.cartItems;
+    });
+    onMounted(() => {
+      selectedNumbers.value = products.value.map((cart) => cart.buyCount || 1);
+    });
 
-//     onMounted(async () => {
-//       if (!productStore.productData) {
-//         await productStore.fetchProductData();
-//       }
-
-//       products.value = Object.values(cartStore.cartItems);
-//       maxLengths.value = products.value.map((product) => product.stock);
-
-//       // 各商品ごとに selectedNumbers を初期化
-//       selectedNumbers.value = products.value.map(() => 1);
-//     });
-
-//     const getStockOptions = (cart) => {
-//       const stockOptions = [];
-//       for (let i = 1; i <= cart.stock; i++) {
-//         stockOptions.push(i);
-//       }
-//       return stockOptions;
-//     };
-
-//     const calculateSubtotal = (cart) => {
-//       const index = products.value.findIndex(
-//         (item) => item.product_id === cart.product_id
-//       );
-//       const quantity = selectedNumbers.value[index] || 0;
-
-//       // cart が存在する場合のみ計算を行う
-//       if (cart) {
-//         return (quantity * cart.price).toLocaleString();
-//       }
-
-//       return "0";
-//     };
-
-//     const calculateTotalPrice = () => {
-//       return selectedNumbers.value
-//         .reduce((total, quantity, index) => {
-//           const cart = products.value[index];
-
-//           // cart が存在する場合のみ計算を行う
-//           if (cart) {
-//             return total + quantity * cart.price;
-//           }
-
-//           return total;
-//         }, 0)
-//         .toLocaleString();
-//     };
-
-//     const calculateTotalTax = () => {
-//       return selectedNumbers.value
-//         .reduce((total, quantity, index) => {
-//           const cart = products.value[index];
-
-//           // cart が存在する場合のみ計算を行う
-//           if (cart) {
-//             return Math.round(total + (quantity * cart.price * 10) / 110);
-//           }
-
-//           return total;
-//         }, 0)
-//         .toLocaleString();
-//     };
-
-//     // const getCategoryImage = (categoryId) => {
-//     //   if (categoryId === 0) {
-//     //     return null;
-//     //   }
-//     //   return require(`../assets/category_image_${categoryId}.jpg`);
-//     // };
-
-//     const DeleteItem = (product) => {
-//       cartStore.removeFromCart(product);
-//       products.value = Object.values(cartStore.cartItems);
-//       maxLengths.value = products.value.map((product) => product.stock);
-//       if (products.value.length == 1) {
-//         cartStore.clearCart();
-//       }
-//     };
-
-//     // const registerFavoriteItem = (product) =>{
-//     //   favoriteStore.addToFavorites(product);
-//     // };
-
-//     const getNowkey = () => {
-//       return cartStore.nowDeleteKey;
-//     };
-
-//     const setBuyCount = (cart, count) => {
-//       cart.buyCount = count;
-//     };
-
-//     return {
-//       productsInCart,
-//       maxLengths,
-//       selectedNumbers,
-//       products,
-//       getStockOptions,
-//       calculateSubtotal,
-//       calculateTotalPrice,
-//       calculateTotalTax,
-//       // getCategoryImage,
-//       DeleteItem,
-//       // registerFavoriteItem,
-//       getNowkey,
-//       setBuyCount,
-//     };
-//   },
+    return {
+      products,
+      selectedNumbers,
+      cartIsEmpty,
+      setBuyCount,
+      DeleteItem,
+      calculateTotalQuantity,
+      calculateTotalPrice,
+      getStockOptions,
+    };
+  },
 };
 </script>
 
 <style scoped>
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500&display=swap");
+
+.wrapper {
+  padding: 5% 10%;
+  color: #54595e;
+}
+.headding {
+  font-size: 34px;
+}
+.cart-products {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+}
+.product-details {
+  display: flex;
+  flex-direction: row;
+}
+.product-image img {
+  width: 150px;
+  height: 150px;
+  object-fit: cover;
+}
+.item-name, .total-container {
+  margin-top: 30px;
+  padding: 10px 10px;
+  background-color: #d9d9d9;
+  font-size: 18px;
+  font-weight: bold;
+}
+.total-container {
+  padding-left: 700px;
+}
+.product-name {
+  font-size: 20px;
+  font-weight: bold;
+  color: #2d4b70;
+}
+.product-info {
+  padding-left: 40px;
+}
+.list-right {
+  padding-left: 300px;
+}
+.cart-no-stock {
+  font-size: 16px;
+  margin: 20px 0 0 30px;
+}
+.cart-buttons, .page-buttons {
+  margin-top: 40px;
+  display: inline-block;
+  border: none;
+  cursor: pointer;
+  background-color: #2d4b70;
+  border-radius: 5px;
+  padding: 10px 50px;
+}
+.product-price, .delete-button-box {
+  margin-top: 20px;
+}
+.cart-buttons {
+  margin-right: 70px;
+}
+.cart-button-label, .page-button-label {
+  text-decoration: none;
+  color: #ffffff;
+}
 </style>

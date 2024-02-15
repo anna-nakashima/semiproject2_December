@@ -12,7 +12,7 @@ export const useProductStore = defineStore("product", {
     async fetchProductData() {
       try {
         const response = await axios.get(
-          "https://script.googleusercontent.com/macros/echo?user_content_key=SqBvW90wLNFSZfcAEJ_N_7FiQZY_rUznp1O8qKuRHfFIWvG-yIm_wQYf1fSouW4cBgkuk1wwLHNQ6aJHkHtLCJW45aSiZSTqm5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnCu8plIgsszfWHN9GH2X5xfwNRKeMwcy75H4AdGt_pjz0A7UNvYybWbZyScdO3bwS-A8bFv8bxHat4OxCRKGyvHm29bzSkpNwtz9Jw9Md8uu&lib=MUh3wknkaoNR2nbBFL9cU_ZVcsU9CMSyN"
+          "https://script.google.com/macros/s/AKfycbx3_yRnBtesy2zY0FzYBfRQkY5B2WG-JzaZDK4rIHwwUMkcOm3Lh4SlpQoOZVQ0JQek/exec"
         );
         this.productData = response.data;
       } catch (error) {

@@ -1,21 +1,29 @@
 <template>
   <div class="wrapper">
     <div class="search-menu">
+      <h1 class="search-title">商品を探す</h1>
       <div class="keyword-search">
         <div class="search-box">
-          <label for="search-keyword-box">キーワード検索：</label>
+          <label for="search-keyword-box" class="main-label">キーワード検索：</label>
           <div class="input-container">
-            <input type="text" id="search-keyword-box" name="search-keyword">
-            <button type="button">
-              <img class="search-icon" src="" alt="">
-            </button>
+            <input v-model="searchKeyword" type="search" id="search-keyword-box" name="search-keyword" placeholder="キーワードを入力">
           </div>
         </div>
       </div>
       <div class="category-menu">
         <div class="category-radio-buttons">
           <div class="main-label">カテゴリー：</div>
-          <div class="radio-container"></div>
+          <div class="radio-container">
+            <label class="category-label">
+              <input type="radio" v-model="selectedCategory" value="">全商品
+            </label>
+          </div>
+          <div class="radio-container" v-for="category in categories" :key="category.category_id">
+            <label class="category-label">
+              <input type="radio" v-model="selectedCategory" :value="category.category_id">
+              {{ category.category_name}}
+            </label>
+          </div>
         </div>
       </div>
     </div>
@@ -24,92 +32,67 @@
       <li class="product-list-items" v-for="product in filteredProducts" :key="product.id">
         <div class="item-card">
           <div class="image-box">
-            <img src="" alt="商品画像" class="image-item"/>
+            <img :src="product.image" alt="商品画像" class="image-item"/>
           </div>
           <div class="product-text-box">
             <p class="product-name">{{ product.product_name }}</p>
             <div class="item-text-row">
               <div class="item-price-box">
-                <p class="product-price">￥<span>{{ product.price }}</span>(税込)</p>
+                <p class="product-price">￥<span>{{ product.price }}</span>（税込）</p>
               </div>
               <div class="button-area">
-                <button class="cart-button">
-                  <router-link class="button-label" type="button" @click="addToCart" to="/shoppingCart">カートに入れる</router-link>
-                </button>
+                <button class="cart-button" type="button" @click="addToCart(product)">カートに入れる</button>
               </div>
             </div>
           </div>
         </div>
       </li>
     </ul>
-    <!-- <div class="item-search-box">
-      <input class="search-box" type="text" v-model="searchKeyword" name="keyword" placeholder="検索">
-      <button type="submit">
-        <img class="search-icon" src="../assets/search-icon.png" alt="">
-      </button>
-    </div>
-    <div class="category-checkboxes">
-      <div class="category-item"><span>分類</span><span>▽</span></div>
-      <div v-for="category in categories" :key="category.category_id">
-        <label class="category-label">
-          {{ category.category_name }}
-          <input type="checkbox" v-model="selectedCategories" :value="category.category_id"/>
-        </label>
+    <div v-if="showPopup" class="modal">
+      <div class="modal-container">
+        <p class="cart-add-text">カートに追加しました！</p>
       </div>
-    </div> -->
-    <!-- <div class="slide-photo-box">
-      <carousel :perPage="1">
-        <slide v-for="(photo, index) in photos" :key="index">
-          <img src="photo.url" alt="Fashion Photo">
-        </slide>
-      </carousel>
-    </div> -->
+    </div>
   </div>
 </template>
 
 <script>
-// import Carousel from "vue3-carousel";
-// import 'vue-carousel/dist/vue-carousel.css';
 import { useProductStore } from "../store/ProductsStore.js";
-// import { useCartStore } from "../store/CartStore.js";
+import { useCartStore } from "../store/CartStore.js";
+import { useRoute } from 'vue-router'
+import { ref, onMounted } from 'vue';
 import axios from "axios";
 
 export default {
-  // components: {
-  //   Carousel,
-  // },
-  // data() {
-  //   return {
-  //     photos: [
-  //       { url: "../assets/product_image_1.jpg" },
-  //       { url: "../assets/product_image_2.jpg" },
-  //       { url: "../assets/product_image_3.jpg" },
-  //       { url: "../assets/product_image_4.jpg" },
-  //     ],
-  //   };
-  // },
   data() {
     return {
       products: [],
-      addToCart: [],
       categories: [],
-      selectedCategories: [],
-      showPopup: false,
+      selectedCategory: null,
+      searchKeyword: "",
     };
   },
+  async created() {
+    const productStore = useProductStore();
+    if (!productStore.productData) {
+      await productStore.fetchProductData();
+    }
+    this.products = productStore.productData || [];
+  },
   computed: {
-    saleProducts() {
-      return this.products.filter(
-        (product) => product.price_down !== "" && product.price_down !== null
-      );
-    },
     filteredProducts() {
-      if (this.selectedCategories.length === 0) {
-        return this.products;
+      if (!this.selectedCategory) {
+        return this.products.filter(product =>
+          product.product_name.includes(this.searchKeyword) ||
+          product.description.includes(this.searchKeyword)
+        );
+      } else {
+        return this.products.filter(product =>
+          product.category_id === this.selectedCategory &&
+          (product.product_name.includes(this.searchKeyword) ||
+          product.description.includes(this.searchKeyword))
+        );
       }
-      return this.products.filter((product) =>
-        this.selectedCategories.includes(product.category_id)
-      );
     },
   },
   mounted() {
@@ -121,7 +104,7 @@ export default {
     fetchData() {
       axios
         .get(
-          "https://script.googleusercontent.com/macros/echo?user_content_key=SqBvW90wLNFSZfcAEJ_N_7FiQZY_rUznp1O8qKuRHfFIWvG-yIm_wQYf1fSouW4cBgkuk1wwLHNQ6aJHkHtLCJW45aSiZSTqm5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnCu8plIgsszfWHN9GH2X5xfwNRKeMwcy75H4AdGt_pjz0A7UNvYybWbZyScdO3bwS-A8bFv8bxHat4OxCRKGyvHm29bzSkpNwtz9Jw9Md8uu&lib=MUh3wknkaoNR2nbBFL9cU_ZVcsU9CMSyN"
+          "https://script.google.com/macros/s/AKfycbx3_yRnBtesy2zY0FzYBfRQkY5B2WG-JzaZDK4rIHwwUMkcOm3Lh4SlpQoOZVQ0JQek/exec"
         )
         .then((response) => {
           this.products = response.data;
@@ -133,51 +116,207 @@ export default {
     fetchCategoryData() {
       axios
         .get(
-          "https://script.googleusercontent.com/macros/echo?user_content_key=fXR1PEljayFNMYEa7qEbqRI3GLReoq8kRG1l2VGZ-KbBaEEfRyXwdHy0BBjPXD9UhuoINLEVBkaq9UIJyLHVTgAfpjHT-f4Wm5_BxDlH2jW0nuo2oDemN9CCS2h10ox_1xSncGQajx_ryfhECjZEnC8zlJ-ExAm3ilBrR1z75ntQAYteR_w7QTST5VWjE-NbDa9j_gWtImvujrd377eFiSQfpwOFjgSQRxaF5o_6d0Pt4F7qy-f4Vtz9Jw9Md8uu&lib=MOvWUG3RPQCg8JS4Ge-63FZVcsU9CMSyN"
+          "https://script.google.com/macros/s/AKfycbzWtdPgbt0WG5QZuUDMdjeETXSUqwWxpetzN8oWEvInf6HkA7G2yuEUAu4ld43O4CzetA/exec"
         )
         .then((response) => {
-          this.categories = response.data.map((category, index) => ({
+          this.categories = response.data.map((category) => ({
             ...category,
-            imageFileName: `category_image_${index + 1}.jpg`,
           }));
         })
         .catch((error) => {
           console.error("カテゴリーデータの取得に失敗しました", error);
         });
     },
-    async updatePassProductNumber(productNo) {
-      const productStore = useProductStore();
-      await productStore.searchProduct(productNo);
-      this.$router.push({
-        name: "productDetails",
-        params: { productNo: productNo },
-      });
-    },
     async fetchProductData() {
       const productStore = useProductStore();
       await productStore.fetchProductData();
     },
+    passProductNumber(product) {
+      const productStore = useProductStore();
+      productStore.passProductNumber = product.No;
+      this.searchKeyword = "";
+    },
+    showAllProducts() {
+      this.selectedCategory = null;
+      this.searchKeyword = "";
+    },
   },
-  // setup() {
-  //   const cartStore = useCartStore();
-  //   const addToCart = async () => {
-  //     const passproductData = product_data.value;
-  //     passproductData.size = selectedSizes[product_no.value];
+  setup() {
+    const productStore = useProductStore();
+    const cartStore = useCartStore();
+    const router = useRoute();
+    const product_no = ref(productStore.passProductNumber);
+    const productNo = router.params.productNo
+    const product_name = ref("kari");
+    const product_price = ref(0);
+    const price_point = ref(0);
+    const product_stock = ref(0);
+    const product_description = ref("説明テキスト");
+    const categoryId = ref(0);
+    const product_data = ref(null);
+    const showPopup = ref(false);
 
-  //     // ここでPromiseを返す
-  //     return new Promise((resolve) => {
-  //       // 非同期処理を行う
-  //       cartStore.addToCart(passproductData);
-
-  //       // 非同期処理が完了したらresolveを呼ぶ
-  //       resolve();
-  //     });
-  //   };
-  //   return {
-  //     addToCart,
-  //   };
-  // },
+    const updateProductData = (newProductNumber) => {
+      product_no.value = newProductNumber;
+      const products = productStore.productData;
+      const product = products.find((product) => product.No == productNo);
+      if (product) {
+        product_name.value = product.product_name;
+        product_price.value = product.price;
+        price_point.value = product.price / 100;
+        product_description.value = product.description;
+        product_stock.value = product.stock;
+        categoryId.value = product.category_id;
+        product_data.value = product;
+      }
+    };
+    const fetchProductInfo = async () => {
+      if (!productStore.productData) {
+        await productStore.fetchProductData();
+      }
+      updateProductData(product_no.value);
+    };
+    onMounted(() => {
+      fetchProductInfo();
+    });
+    const addToCart = async () => {
+      const passproductData = product_data.value;
+      cartStore.addToCart(passproductData);
+      showPopup.value = true;
+      setTimeout(() => { showPopup.value = false; }, 2000);
+    };
+    return {
+      product_no,
+      product_name,
+      product_price,
+      price_point,
+      product_stock,
+      product_description,
+      categoryId,
+      product_data,
+      addToCart,
+      showPopup,
+    };
+  }
 };
 </script>
 
-<style></style>
+<style scoped>
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500&display=swap");
+
+.wrapper {
+  padding: 5% 10%;
+  color: #54595e;
+}
+.search-title, .list-title {
+  font-size: 34px;
+}
+.list-title {
+  margin-top: 50px;
+  position: relative;
+}
+.list-title::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 1px;
+  background-color: #2d4b70;
+  position: absolute;
+  top: -25px;
+  left: 0;
+}
+.search-box, .category-radio-buttons {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  font-size: 14px;
+  margin-top: 20px;
+}
+.main-label {
+  font-weight: bold;
+}
+.input-container input{
+  width: 500px;
+  height: 40px;
+  font-size: 16px;
+  border: 1px solid #dddee3;
+  border-radius: 3px;
+}
+.category-label {
+  padding-right: 10px;
+}
+.product-list {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 0;
+  list-style: none;
+  font-size: 18px;
+}
+.product-list-items {
+  width: calc(50% - 15px);
+  margin-bottom: 20px;
+}
+.item-card {
+  padding-bottom: 30px;
+}
+.image-box {
+  width: 100%;
+  height: 0;
+  padding-top: 100%;
+  position: relative;
+}
+.image-item {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.product-text-box, .item-text-row {
+  padding-top: 10px;
+}
+.product-price {
+  font-size: 20px;
+  padding-right: 20px;
+}
+.item-text-row {
+  display: flex;
+  flex-direction: row;
+}
+.cart-button {
+  border: none;
+  cursor: pointer;
+  background-color: #2d4b70;
+  color: #ffffff;
+  border-radius: 5px;
+  padding: 5px 20px;
+}
+.modal {
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+.modal-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #2d4b70;
+  border: #2d4b70 1px solid;
+  border-radius: 10px;
+  color: #ffffff;
+  height: 100px;
+  width: 500px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.cart-add-text {
+  font-size: 25px;
+}
+</style>>

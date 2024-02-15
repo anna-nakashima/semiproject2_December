@@ -34,6 +34,7 @@ export default {
 </script>
 
 <style>
+@import "@/assets/CSS/reset.css";
 .link {
   display: flex;
   justify-content: space-between;
